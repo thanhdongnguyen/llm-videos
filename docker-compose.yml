@@ -1,0 +1,30 @@
+version: "3"
+services:
+  mariadb:
+    image: bitnami/mariadb:latest
+    ports:
+      - 3333:3306
+    volumes:
+      - ./local/mariadb:/bitnami/mariadb
+    environment:
+      MARIADB_ROOT_PASSWORD: 12345678
+      MARIADB_ROOT_USER: root
+      MARIADB_DATABASE: llm_video
+  redis:
+    image: redis:latest
+    ports:
+      - 6339:6379
+
+  phpmyadmin:
+    image: phpmyadmin
+    ports:
+      - 9992:80
+    depends_on:
+      - mariadb
+    environment:
+      PMA_ARBITRARY: 1
+      PMA_HOST: mariadb
+      PMA_PORT: 3306
+      PMA_USER: root
+      PMA_PASSWORD: 12345678
+      UPLOAD_LIMIT: 300M
