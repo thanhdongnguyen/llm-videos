@@ -16,6 +16,7 @@ from llm_videos.models.video_subtitles import VideoSubtitles
 from llm_videos.models.users_upload import UsersUpload
 from llm_videos.models.account_config import AccountConfig
 from llm_videos.translate.systran import SysTran
+from llm_videos.errors.code import get_error
 
 
 class HandlerVideoService:
@@ -198,3 +199,59 @@ class HandlerVideoService:
             file.write(content)
 
         return file_path
+
+    def get_video_info(self, video_id):
+
+        user_id = g.user_id
+
+        u = Select(UsersUpload).where(UsersUpload.video_id == video_id).where(UsersUpload.user_id == user_id)
+        videoU = self.session.scalars(u).first()
+        if videoU is None:
+            return get_error(19)
+
+        try:
+            u = Select(Videos).where(Videos.id == video_id)
+            video = self.session.scalars(u).first()
+        except:
+            return get_error(19)
+
+        if video is None:
+            return get_error(19)
+
+        return {
+            "success": True,
+            "id": video.id,
+            "video_id": video.video_id,
+            "title": video.title,
+            "thumbnail_url": video.thumbnail_url,
+            "description": video.description,
+            "created_at": video.created_at
+        }
+
+    def get_video_subtitle(self, video_id: int, lang: str):
+        user_id = g.user_id
+        u = Select(UsersUpload).where(UsersUpload.video_id == video_id).where(UsersUpload.user_id == user_id)
+        videoU = self.session.scalars(u).first()
+        if videoU is None:
+            return get_error(19)
+
+        try:
+            u = Select(VideoSubtitles).where(VideoSubtitles.video_id == video_id).where(VideoSubtitles.language == lang)
+            video = self.session.scalars(u).first()
+        except:
+            return get_error(19)
+
+        if video is None:
+            return get_error(19)
+
+        return {
+            "success": True,
+            "id": video.id,
+            "video_id": video.video_id,
+            "language": video.language,
+            "content": video.content,
+            "created_at": video.created_at
+        }
+
+
+

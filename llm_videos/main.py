@@ -1,6 +1,7 @@
 from os import environ, path
 from os.path import join, dirname
 import os, sys
+
 sys.path.append(os.path.abspath(join(dirname(__file__), path.pardir)))
 
 from flask import Flask, request, g
@@ -41,8 +42,7 @@ load_dotenv(dotenv_path)
 from langtrace_python_sdk import langtrace
 
 if environ['LANGTRACE_API_KEY'] is not None:
-    langtrace.init(api_key = environ['LANGTRACE_API_KEY'])
-
+    langtrace.init(api_key=environ['LANGTRACE_API_KEY'])
 
 app = Flask(__name__)
 
@@ -55,12 +55,10 @@ port = int(environ["PORT"])
 engine = create_engine(f"mysql+pymysql://{db_user}:{db_pass}@{db_host}:{db_port}/{db_name}")
 session = Session(engine)
 
-
 db = Database(host=environ["REDIS_HOST"], port=int(environ["REDIS_PORT"]), db=0)
-chromaDB = chromadb.PersistentClient(path=join(dirname(__file__), "chroma"))
+chromaDB = chromadb.PersistentClient(path=join(dirname(__file__), "chroma"), database="llm_videos")
 
-
-chatStore = RedisChatStore(redis_url=f"redis://{environ['REDIS_HOST']}:{environ['REDIS_PORT']}/0", ttl=7200)
+chatStore = RedisChatStore(redis_url=f"redis://{environ['REDIS_HOST']}:{environ['REDIS_PORT']}/0", ttl=86400)
 
 logger.add("logs/llm_videos.log", rotation="1 day", format="{time} {level} {message}", level="INFO")
 
@@ -153,7 +151,6 @@ def update_user_info():
 
 @app.route("/v1/account/config", methods=["GET"])
 def get_config():
-
     account_config_service = AccountConfigService(session)
 
     resp = account_config_service.get_account_config()
@@ -172,24 +169,31 @@ def update_config():
     return account_config_service.update_config(form)
 
 
-@app.route("/v1/video/translate", methods=["POST"])
-def translate_video():
-    pass
 
 
-@app.route("/v1/video/tracking", methods=["GET"])
+@app.route("/v1/video/jobs/tracking", methods=["GET"])
 def tracking_video_status():
     pass
 
 
 @app.route("/v1/video/info", methods=["GET"])
 def get_video_info():
-    pass
+    video_id = request.args.get("video_id")
 
+    videoService = HandlerVideoService(session, chromaDB)
+    return videoService.get_video_info(video_id)
 
 @app.route("/v1/video/subtitle", methods=["GET"])
 def get_video_subtitle():
-    pass
+    video_id = request.args.get("video_id")
+    lang = request.args.get("lang")
+
+    if video_id is None or lang is None:
+        return get_error(17)
+
+    videoService = HandlerVideoService(session, chromaDB)
+    return videoService.get_video_subtitle(int(video_id), lang)
+
 
 @app.route("/v1/video/summarize", methods=["POST"])
 def summarize_video():
@@ -216,6 +220,18 @@ def chat_video():
     chat_service = ChatService(session, chromaDB, chatStore)
 
     resp = chat_service.completion(form)
+    return resp
+
+
+@app.route("/v1/video/chat/history", methods=["POST"])
+def chat_video():
+    limit = request.args.get("limit") or 20
+    offset = request.args.get("offset") or 0
+    video_id = request.args.get("video_id")
+
+    chat_service = ChatService(session, chromaDB, chatStore)
+
+    resp = chat_service.history(int(video_id), limit, offset)
     return resp
 
 

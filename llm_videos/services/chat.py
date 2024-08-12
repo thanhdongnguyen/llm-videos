@@ -95,8 +95,8 @@ class ChatService:
         res = ""
         try:
             res = self.__handler_convertion(video_id, target_language, form.get("query"))
-        except:
-            new_chat_system.message = "system error"
+        except Exception as e:
+            new_chat_system.message = "system error: " + str(e)
             new_chat_system.status = "error"
             new_chat_system.updated_at = int(time.time())
 
@@ -104,6 +104,7 @@ class ChatService:
 
         return {
             "success": True,
+            "channel_id": channel_id,
             "reply": res
         }
 
