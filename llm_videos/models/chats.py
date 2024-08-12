@@ -17,6 +17,7 @@ class Chats(Base):
     video_id: Mapped[int] = mapped_column(name="video_id", type_=Integer, nullable=False)
     message: Mapped[str] = mapped_column(name="message", type_=String, nullable=False)
     type: Mapped[str] = mapped_column(name="type", type_=String, nullable=False)
+    status: Mapped[str] = mapped_column(name="status", type_=String, nullable=True)
     created_at: Mapped[Optional[int]] = mapped_column(name="created_at", type_=Integer, nullable=True,
                                                       default=time.time())
     updated_at: Mapped[Optional[int]] = mapped_column(name="updated_at", type_=Integer, nullable=True,

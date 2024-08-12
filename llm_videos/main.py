@@ -1,15 +1,20 @@
+from os import environ, path
+from os.path import join, dirname
+import os, sys
+sys.path.append(os.path.abspath(join(dirname(__file__), path.pardir)))
+
 from flask import Flask, request, g
 from dotenv import load_dotenv
-from os.path import join, dirname
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
-from os import environ
 from walrus import Database
 from flask_http_middleware import MiddlewareManager
 from loguru import logger
 from llama_index.core import Settings
 from llama_index.llms.openai import OpenAI
 import chromadb
+from llama_index.core.memory import ChatMemoryBuffer
+from llama_index.storage.chat_store.redis import RedisChatStore
 
 from llm_videos.middleware.auth import AuthMiddleware
 from llm_videos.errors.code import get_error
@@ -18,6 +23,7 @@ from llm_videos.schemas.register import RegisterSchema
 from llm_videos.schemas.login import LoginSchema
 from llm_videos.schemas.account import AccountUpdateSchema, UpdateConfigSchema
 from llm_videos.schemas.video import ProcessYoutubeSchema, SummarizeVideoSchema
+from llm_videos.schemas.chat import ChatSchema
 
 """
 Service
@@ -26,15 +32,17 @@ from llm_videos.services.user_service import UserService
 from llm_videos.services.handler_video import HandlerVideoService
 from llm_videos.services.account_config import AccountConfigService
 from llm_videos.services.summarize import SummaryService
+from llm_videos.services.chat import ChatService
 
 dotenv_path = join(dirname(__file__), '.env')
 load_dotenv(dotenv_path)
 
-"""
-Feature 1: Translate partial video content
-Feature 2: Chat with partial video content
-Feature 3: Download video youtube
-"""
+# init tracing
+from langtrace_python_sdk import langtrace
+
+if environ['LANGTRACE_API_KEY'] is not None:
+    langtrace.init(api_key = environ['LANGTRACE_API_KEY'])
+
 
 app = Flask(__name__)
 
@@ -47,9 +55,12 @@ port = int(environ["PORT"])
 engine = create_engine(f"mysql+pymysql://{db_user}:{db_pass}@{db_host}:{db_port}/{db_name}")
 session = Session(engine)
 
+
 db = Database(host=environ["REDIS_HOST"], port=int(environ["REDIS_PORT"]), db=0)
 chromaDB = chromadb.PersistentClient(path=join(dirname(__file__), "chroma"))
 
+
+chatStore = RedisChatStore(redis_url=f"redis://{environ['REDIS_HOST']}:{environ['REDIS_PORT']}/0", ttl=7200)
 
 logger.add("logs/llm_videos.log", rotation="1 day", format="{time} {level} {message}", level="INFO")
 
@@ -62,7 +73,8 @@ app.wsgi_app.add_middleware(AuthMiddleware, engine=engine, cache=db.cache(), rou
     "/v1/account/config",
     "/v1/account/config/update",
     "/v1/video/youtube/process",
-    "/v1/video/summarize"
+    "/v1/video/summarize",
+    "/v1/video/chat/completion"
 ])
 
 
@@ -80,7 +92,7 @@ def register():
     except:
         return get_error(17)
 
-    user_service = UserService(engine)
+    user_service = UserService(session)
 
     resp = user_service.register(form)
     return resp
@@ -193,9 +205,18 @@ def summarize_video():
     return resp
 
 
-@app.route("/v1/video/chat", methods=["POST"])
+@app.route("/v1/video/chat/completion", methods=["POST"])
 def chat_video():
-    pass
+    try:
+        schema = ChatSchema()
+        form = schema.load(request.json)
+    except:
+        return get_error(17)
+
+    chat_service = ChatService(session, chromaDB, chatStore)
+
+    resp = chat_service.completion(form)
+    return resp
 
 
 if __name__ == "__main__":

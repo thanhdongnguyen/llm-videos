@@ -63,7 +63,6 @@ class HandlerVideoService:
 
         context = StorageContext.from_defaults(
             vector_store=vector_store,
-            # persist_dir=join(dirname(__file__), '..', 'chroma'),
         )
 
         spliter = SentenceSplitter(chunk_size=1024, chunk_overlap=10)

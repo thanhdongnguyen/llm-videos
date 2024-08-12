@@ -59,6 +59,7 @@ CREATE TABLE chats (
     video_id bigint(20) NOT NULL,
     message text COLLATE utf8mb4_unicode_ci,
     type ENUM('system', 'human') DEFAULT "human",
+    status ENUM('success', 'pending', 'error') DEFAULT "pending",
     created_at int(11) NOT NULL,
     updated_at int(11) NOT NULL
 ) ENGINE=InnoDB COLLATE=utf8mb4_unicode_ci;

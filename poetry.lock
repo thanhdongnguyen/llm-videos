@@ -1606,6 +1606,21 @@ llama-index-core = ">=0.10.7,<0.11.0"
 llama-parse = ">=0.4.0"
 
 [[package]]
+name = "llama-index-storage-chat-store-redis"
+version = "0.1.3"
+description = "llama-index storage-chat-store redis integration"
+optional = false
+python-versions = "<4.0,>=3.8.1"
+files = [
+    {file = "llama_index_storage_chat_store_redis-0.1.3-py3-none-any.whl", hash = "sha256:a8bd1d049280ebff513f12aa7475e13d5adc094ca7918887cecb97aa7e9ac771"},
+    {file = "llama_index_storage_chat_store_redis-0.1.3.tar.gz", hash = "sha256:5acf2eb426ae7abc3c6be0d1303f5443b57b59ca0c594b05adf74986fb398c36"},
+]
+
+[package.dependencies]
+llama-index-core = ">=0.10.11.post1,<0.11.0"
+redis = ">=4.1.0"
+
+[[package]]
 name = "llama-index-vector-stores-chroma"
 version = "0.1.10"
 description = "llama-index vector_stores chroma integration"
@@ -4267,4 +4282,4 @@ test = ["big-O", "importlib-resources", "jaraco.functools", "jaraco.itertools", 
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "fc2f5b64a1e13db662eecf2fd09177f6362b87fe58e7355a4cd2e88dad55d8ed"
+content-hash = "af7f02ae230b77097478935cb9bf2d21ee933fbc504a85a08896e64ff7b5883b"
