@@ -72,3 +72,16 @@ CREATE TABLE users_upload (
     created_at int(11) NOT NULL,
     updated_at int(11) NOT NULL
 ) ENGINE=InnoDB COLLATE=utf8mb4_unicode_ci;
+
+
+CREATE TABLE background_jobs (
+    id bigint(20) NOT NULL PRIMARY KEY AUTO_INCREMENT,
+    user_id bigint(20) NOT NULL,
+    video_id bigint(20) NOT NULL,
+    job_id varchar(250) COLLATE utf8mb4_unicode_ci NOT NULL,
+    status ENUM('success', 'pending', 'error') DEFAULT "pending",
+    target_language varchar(20) COLLATE utf8mb4_unicode_ci,
+    description varchar(250) COLLATE utf8mb4_unicode_ci,
+    created_at int(11) NOT NULL,
+    updated_at int(11) NOT NULL
+) ENGINE=InnoDB COLLATE=utf8mb4_unicode_ci;

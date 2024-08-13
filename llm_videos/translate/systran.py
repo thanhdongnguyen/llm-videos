@@ -1,5 +1,6 @@
 from . import Translate, make_request_get, make_request_post, make_request_upload, make_provider_error, make_provider_success
 from os import environ
+from loguru import logger
 
 class SysTran(Translate):
     def __init__(self):
@@ -42,11 +43,12 @@ class SysTran(Translate):
     def translate_file(self, path_file: str, from_lang: str, to_lang: str):
         endpoint = f"{self.domain}/translation/file/translate"
 
+
         try:
             response = make_request_upload(
                 endpoint,
-                file_key="input",
                 file_path=path_file,
+                file_key="input",
                 additional_data={
                     "source": from_lang,
                     "target": to_lang,
@@ -56,6 +58,12 @@ class SysTran(Translate):
                 headers=self.headers
             )
             resp = response.json()
+
+            logger.info(f"Translate file: file_path: {path_file}, resp: {resp}")
+
+            if resp["requestId"] is not None:
+                return make_provider_success("", resp["requestId"], status="pending", have_queue=True, queue_id=resp["requestId"])
+
             if resp["error"]["statusCode"] != 200:
                 return make_provider_error(
                     resp["error"]["statusCode"],

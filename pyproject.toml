@@ -34,6 +34,7 @@ llama-index-storage-chat-store-redis = "^0.1.3"
 websockets = "^12.0"
 celery = "^5.4.0"
 langtrace-python-sdk = "^2.2.19"
+schedule = "^1.2.2"
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"

@@ -14,7 +14,6 @@ from loguru import logger
 from llama_index.core import Settings
 from llama_index.llms.openai import OpenAI
 import chromadb
-from llama_index.core.memory import ChatMemoryBuffer
 from llama_index.storage.chat_store.redis import RedisChatStore
 
 from llm_videos.middleware.auth import AuthMiddleware
@@ -56,13 +55,13 @@ engine = create_engine(f"mysql+pymysql://{db_user}:{db_pass}@{db_host}:{db_port}
 session = Session(engine)
 
 db = Database(host=environ["REDIS_HOST"], port=int(environ["REDIS_PORT"]), db=0)
-chromaDB = chromadb.PersistentClient(path=join(dirname(__file__), "chroma"), database="llm_videos")
+chromaDB = chromadb.PersistentClient(path=join(dirname(__file__), "chroma"))
 
 chatStore = RedisChatStore(redis_url=f"redis://{environ['REDIS_HOST']}:{environ['REDIS_PORT']}/0", ttl=86400)
 
 logger.add("logs/llm_videos.log", rotation="1 day", format="{time} {level} {message}", level="INFO")
 
-Settings.llm = OpenAI(model="gpt-4", temperature=1, max_tokens=2000)
+Settings.llm = OpenAI(model="gpt-3.5-turbo", temperature=1, max_tokens=2000)
 
 app.wsgi_app = MiddlewareManager(app)
 app.wsgi_app.add_middleware(AuthMiddleware, engine=engine, cache=db.cache(), routes=[
@@ -208,8 +207,8 @@ def summarize_video():
     return resp
 
 
-@app.route("/v1/video/chat/completion", methods=["POST"])
-def chat_video():
+@app.route("/v1/chat/completion", methods=["POST"])
+def chat_completion():
     try:
         schema = ChatSchema()
         form = schema.load(request.json)
@@ -222,8 +221,8 @@ def chat_video():
     return resp
 
 
-@app.route("/v1/video/chat/history", methods=["POST"])
-def chat_video():
+@app.route("/v1/chat/history", methods=["POST"])
+def get_chat_history():
     limit = request.args.get("limit") or 20
     offset = request.args.get("offset") or 0
     video_id = request.args.get("video_id")

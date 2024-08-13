@@ -10,7 +10,6 @@ def make_request_post(url, data=None, headers=None):
     return response
 
 def make_request_upload(url, file_path, file_key='file', additional_data=None, headers=None):
-    headers["Content-Type"] = "multipart/form-data"
     files = {file_key: open(file_path, 'rb')}
     data = additional_data if additional_data is not None else {}
 

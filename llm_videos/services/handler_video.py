@@ -15,6 +15,7 @@ from llm_videos.models.videos import Videos
 from llm_videos.models.video_subtitles import VideoSubtitles
 from llm_videos.models.users_upload import UsersUpload
 from llm_videos.models.account_config import AccountConfig
+from llm_videos.models.background_jobs import BackgroundJobs
 from llm_videos.translate.systran import SysTran
 from llm_videos.errors.code import get_error
 
@@ -23,6 +24,7 @@ class HandlerVideoService:
     def __init__(self, session, chromaDB):
         self.session = session
         self.chromaDB = chromaDB
+        self.translator = SysTran()
 
     def __init_video_ytb(self, url):
         video_info = get_video_info(url)
@@ -108,6 +110,8 @@ class HandlerVideoService:
             )
             self.session.add(new_sub)
             self.session.commit()
+        else:
+            subtitle_default = dsub.content
 
         videoU = Select(UsersUpload).where(UsersUpload.video_id == video_info.id).where(UsersUpload.user_id == user_id)
         dvideoU = self.session.scalars(videoU).first()
@@ -121,7 +125,7 @@ class HandlerVideoService:
             self.session.add(new_videoU)
             self.session.commit()
 
-        handler_sub_target = self.__handler_target_lang_subtitle(video_info.id, video_info.video_url, video_info.lang)
+        handler_sub_target = self.__handler_target_lang_subtitle(video_info.id, subtitle_default, video_info.lang)
         # if handler_sub_target is None:
         #     self.__handler_translate_subtitles(video_info.id, video_info.lang)
 
@@ -129,17 +133,48 @@ class HandlerVideoService:
             "success": True
         }
 
-    def __handler_target_lang_subtitle(self, id, url, lang):
+
+
+    def __handler_target_lang_subtitle(self, id, content, lang):
         user_id = g.user_id
 
         vConfig = Select(AccountConfig).where(AccountConfig.user_id == user_id)
         dConfig = self.session.scalars(vConfig).first()
-
         if dConfig is None:
             return None
-
         if lang == dConfig.target_language:
             return None
+
+        vSub = Select(VideoSubtitles).where(VideoSubtitles.video_id == id).where(VideoSubtitles.language == dConfig.target_language)
+        dSub = self.session.scalars(vSub).first()
+        if dSub is not None:
+            return None
+
+        vJob = Select(BackgroundJobs).where(BackgroundJobs.video_id == id).where(BackgroundJobs.target_language == dConfig.target_language)
+        dJob = self.session.scalars(vJob).first()
+        if dJob is not None and dJob.status != "error":
+            return None
+
+        file_path = self.__save_file_subtitle(content, id, dConfig.target_language)
+        res = self.translator.translate_file(file_path, lang, dConfig.target_language)
+
+        logger.info(f"Translate subtitle: {res}")
+
+        if res["success"] is False:
+            return None
+
+        new_job = BackgroundJobs(
+            video_id=id,
+            user_id=user_id,
+            job_id=res["request_id"],
+            target_language=dConfig.target_language,
+            status="pending",
+            created_at=int(time.time()),
+            updated_at=int(time.time())
+        )
+        self.session.add(new_job)
+        self.session.commit()
+
 
         # subtitle = download_youtube_subtitle(url, dConfig.target_language)
         # if subtitle is None:
