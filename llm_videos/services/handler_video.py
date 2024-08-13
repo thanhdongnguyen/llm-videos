@@ -141,26 +141,26 @@ class HandlerVideoService:
         if lang == dConfig.target_language:
             return None
 
-        subtitle = download_youtube_subtitle(url, dConfig.target_language)
-        if subtitle is None:
-            return None
-        self.__handler_vector_subtitle(id, dConfig.target_language, subtitle)
-
-        vsub = Select(VideoSubtitles).where(VideoSubtitles.video_id == id).where(
-            VideoSubtitles.language == dConfig.target_language)
-        dsub = self.session.scalars(vsub).first()
-
-        if dsub is None:
-            new_sub = VideoSubtitles(
-                video_id=id,
-                language=dConfig.target_language,
-                content=subtitle,
-                created_at=int(time.time()),
-                updated_at=int(time.time())
-            )
-            self.session.add(new_sub)
-            self.session.commit()
-
+        # subtitle = download_youtube_subtitle(url, dConfig.target_language)
+        # if subtitle is None:
+        #     return None
+        # self.__handler_vector_subtitle(id, dConfig.target_language, subtitle)
+        #
+        # vsub = Select(VideoSubtitles).where(VideoSubtitles.video_id == id).where(
+        #     VideoSubtitles.language == dConfig.target_language)
+        # dsub = self.session.scalars(vsub).first()
+        #
+        # if dsub is None:
+        #     new_sub = VideoSubtitles(
+        #         video_id=id,
+        #         language=dConfig.target_language,
+        #         content=subtitle,
+        #         created_at=int(time.time()),
+        #         updated_at=int(time.time())
+        #     )
+        #     self.session.add(new_sub)
+        #     self.session.commit()
+        #
         return True
 
     def __handler_translate_subtitles(self, id, lang):

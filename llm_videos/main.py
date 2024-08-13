@@ -169,8 +169,6 @@ def update_config():
     return account_config_service.update_config(form)
 
 
-
-
 @app.route("/v1/video/jobs/tracking", methods=["GET"])
 def tracking_video_status():
     pass
@@ -182,6 +180,7 @@ def get_video_info():
 
     videoService = HandlerVideoService(session, chromaDB)
     return videoService.get_video_info(video_id)
+
 
 @app.route("/v1/video/subtitle", methods=["GET"])
 def get_video_subtitle():

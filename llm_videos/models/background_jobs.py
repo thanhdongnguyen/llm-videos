@@ -15,6 +15,8 @@ class BackgroundJobs(Base):
     video_id: Mapped[int] = mapped_column(name="video_id", type_=Integer, nullable=False)
     user_id: Mapped[int] = mapped_column(name="user_id", type_=Integer, nullable=False)
     status: Mapped[str] = mapped_column(name="status", type_=String, nullable=False)
+    target_language: Mapped[str] = mapped_column(name="target_language", type_=String, nullable=False)
+    description: Mapped[str] = mapped_column(name="description", type_=String, nullable=True)
     created_at: Mapped[Optional[int]] = mapped_column(name="created_at", type_=Integer, nullable=True, default=time.time())
     updated_at: Mapped[Optional[int]] = mapped_column(name="updated_at", type_=Integer, nullable=True, default=time.time())
 
