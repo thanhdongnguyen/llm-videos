@@ -13,6 +13,10 @@ from llama_index.core import SimpleDirectoryReader, StorageContext, VectorStoreI
 from llama_index.core.text_splitter import SentenceSplitter
 import chromadb
 
+logger.add(f"{dirname(__file__)}/../logs/llm_videos.log", rotation="1 day", format="{time} {level} {message}", level="INFO")
+dotenv_path = join(dirname(__file__), '..', '.env')
+load_dotenv(dotenv_path)
+
 from llm_videos.models.background_jobs import BackgroundJobs
 from llm_videos.models.videos import Videos
 from llm_videos.translate.systran import SysTran
@@ -20,9 +24,7 @@ from llm_videos.models.video_subtitles import VideoSubtitles
 
 
 
-logger.add(f"{dirname(__file__)}/../logs/llm_videos.log", rotation="1 day", format="{time} {level} {message}", level="INFO")
-dotenv_path = join(dirname(__file__), '..', '.env')
-load_dotenv(dotenv_path)
+
 
 db_user = environ["DB_USER"]
 db_pass = environ["DB_PASS"]
@@ -31,7 +33,7 @@ db_port = environ["DB_PORT"]
 db_name = environ["DB_DATABASE"]
 port = int(environ["PORT"])
 engine = create_engine(f"mysql+pymysql://{db_user}:{db_pass}@{db_host}:{db_port}/{db_name}")
-session = Session(engine)
+session = Session(engine, expire_on_commit=False)
 chromaDB = chromadb.PersistentClient(path=join(dirname(__file__), "..", "chroma"))
 
 class VideoProcessing:

@@ -52,7 +52,7 @@ db_port = environ["DB_PORT"]
 db_name = environ["DB_DATABASE"]
 port = int(environ["PORT"])
 engine = create_engine(f"mysql+pymysql://{db_user}:{db_pass}@{db_host}:{db_port}/{db_name}")
-session = Session(engine)
+session = Session(engine, expire_on_commit=False, autoflush=True)
 
 db = Database(host=environ["REDIS_HOST"], port=int(environ["REDIS_PORT"]), db=0)
 chromaDB = chromadb.PersistentClient(path=join(dirname(__file__), "chroma"))
@@ -189,8 +189,8 @@ def get_video_subtitle():
     if video_id is None or lang is None:
         return get_error(17)
 
-    videoService = HandlerVideoService(session, chromaDB)
-    return videoService.get_video_subtitle(int(video_id), lang)
+    video_service = HandlerVideoService(session, chromaDB)
+    return video_service.get_video_subtitle(int(video_id), lang)
 
 
 @app.route("/v1/video/summarize", methods=["POST"])

@@ -69,6 +69,9 @@ CREATE TABLE users_upload (
     id bigint(20) NOT NULL PRIMARY KEY AUTO_INCREMENT,
     user_id bigint(20) NOT NULL,
     video_id bigint(20) NOT NULL,
+    status ENUM('success', 'pending', 'error') DEFAULT "pending",
+    translate_processing_status ENUM('success', 'pending', 'error') DEFAULT "pending",
+    vector_index_status ENUM('success', 'pending', 'error') DEFAULT "pending",
     created_at int(11) NOT NULL,
     updated_at int(11) NOT NULL
 ) ENGINE=InnoDB COLLATE=utf8mb4_unicode_ci;

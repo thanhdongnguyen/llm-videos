@@ -18,10 +18,11 @@ from llm_videos.models.account_config import AccountConfig
 from llm_videos.models.background_jobs import BackgroundJobs
 from llm_videos.translate.systran import SysTran
 from llm_videos.errors.code import get_error
+from llm_videos.celery.video_processing import handler_index_video_ytb
 
 
 class HandlerVideoService:
-    def __init__(self, session, chromaDB):
+    def __init__(self, session: Session, chromaDB):
         self.session = session
         self.chromaDB = chromaDB
         self.translator = SysTran()
@@ -77,29 +78,33 @@ class HandlerVideoService:
         return
 
     def process_youtube_video(self, form):
-
         user_id = g.user_id
+
         try:
-            u = Select(Videos).where(Videos.video_url == form["youtube_url"])
-            video_info = self.session.scalars(u).first()
+            video_info = self.session.query(Videos).where(Videos.video_url == form["youtube_url"]).first()
         except:
             video_info = self.__init_video_ytb(form["youtube_url"])
 
         if video_info is None:
             video_info = self.__init_video_ytb(form["youtube_url"])
 
-        print(f"Video info: {video_info}")
-        vsub = Select(VideoSubtitles).where(VideoSubtitles.video_id == video_info.id).where(
-            VideoSubtitles.language == video_info.lang)
-        dsub = self.session.scalars(vsub).first()
+        user_upload = self.session.query(UsersUpload).where(UsersUpload.video_id == video_info.id).where(UsersUpload.user_id == user_id).order_by(UsersUpload.created_at.desc()).first()
+        if user_upload is not None and (user_upload.status == "success" or user_upload.status == "pending"):
+            logger.info(f"Video already processed: {video_info.id}")
+            return {
+                "success": True
+            }
 
+        print(f"Video info: {video_info}")
+        dsub = self.session.query(VideoSubtitles).where(VideoSubtitles.video_id == video_info.id).where(
+            VideoSubtitles.language == video_info.lang).first()
         if dsub is None:
             subtitle_default = download_youtube_subtitle(video_info.video_url, video_info.lang)
             if subtitle_default is None:
                 return {
                     "success": False
                 }
-            self.__handler_vector_subtitle(video_info.id, video_info.lang, subtitle_default)
+            # self.__handler_vector_subtitle(video_info.id, video_info.lang, subtitle_default)
 
             new_sub = VideoSubtitles(
                 video_id=video_info.id,
@@ -110,70 +115,59 @@ class HandlerVideoService:
             )
             self.session.add(new_sub)
             self.session.commit()
-        else:
-            subtitle_default = dsub.content
 
-        videoU = Select(UsersUpload).where(UsersUpload.video_id == video_info.id).where(UsersUpload.user_id == user_id)
-        dvideoU = self.session.scalars(videoU).first()
-        if dvideoU is None:
-            new_videoU = UsersUpload(
-                video_id=video_info.id,
-                user_id=user_id,
-                created_at=int(time.time()),
-                updated_at=int(time.time())
-            )
-            self.session.add(new_videoU)
-            self.session.commit()
-
-        handler_sub_target = self.__handler_target_lang_subtitle(video_info.id, subtitle_default, video_info.lang)
-        # if handler_sub_target is None:
-        #     self.__handler_translate_subtitles(video_info.id, video_info.lang)
+        self.__handler_user_upload(video_info)
 
         return {
             "success": True
         }
 
-
-
-    def __handler_target_lang_subtitle(self, id, content, lang):
+    def __get_account_config(self):
         user_id = g.user_id
 
         vConfig = Select(AccountConfig).where(AccountConfig.user_id == user_id)
         dConfig = self.session.scalars(vConfig).first()
         if dConfig is None:
             return None
-        if lang == dConfig.target_language:
-            return None
+        return dConfig
 
-        vSub = Select(VideoSubtitles).where(VideoSubtitles.video_id == id).where(VideoSubtitles.language == dConfig.target_language)
-        dSub = self.session.scalars(vSub).first()
-        if dSub is not None:
-            return None
+    def __handler_user_upload(self, video_info):
+        user_id = g.user_id
 
-        vJob = Select(BackgroundJobs).where(BackgroundJobs.video_id == id).where(BackgroundJobs.target_language == dConfig.target_language)
-        dJob = self.session.scalars(vJob).first()
-        if dJob is not None and dJob.status != "error":
-            return None
 
-        file_path = self.__save_file_subtitle(content, id, dConfig.target_language)
-        res = self.translator.translate_file(file_path, lang, dConfig.target_language)
+        status = "pending"
+        translate_processing_status = "pending"
+        vector_index_status = "pending"
 
-        logger.info(f"Translate subtitle: {res}")
+        dConfig = self.__get_account_config()
+        target_lang = dConfig.target_language or "en"
 
-        if res["success"] is False:
-            return None
+        vsub = Select(VideoSubtitles).where(VideoSubtitles.video_id == id).where(VideoSubtitles.language == target_lang)
+        dsub = self.session.scalars(vsub).first()
+        if dsub is not None:
+            translate_processing_status = "success"
 
-        new_job = BackgroundJobs(
-            video_id=id,
+        if translate_processing_status == "success" and vector_index_status == "pending":
+            status = "success"
+
+        new_video_u = UsersUpload(
+            video_id=video_info.id,
             user_id=user_id,
-            job_id=res["request_id"],
-            target_language=dConfig.target_language,
-            status="pending",
+            status=status,
+            translate_processing_status=translate_processing_status,
+            vector_index_status=vector_index_status,
             created_at=int(time.time()),
             updated_at=int(time.time())
         )
-        self.session.add(new_job)
+        self.session.add(new_video_u)
         self.session.commit()
+
+        if status == "pending":
+            handler_index_video_ytb.delay(video_info.id, user_id, new_video_u.id)
+        return True
+
+
+
 
 
         # subtitle = download_youtube_subtitle(url, dConfig.target_language)
